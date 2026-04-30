@@ -2,20 +2,8 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
-const USERS_STORAGE_KEY = "otci-users";
-
-function getStoredUsers() {
-  try {
-    const users = JSON.parse(localStorage.getItem(USERS_STORAGE_KEY) || "[]");
-    return Array.isArray(users) ? users : [];
-  } catch (error) {
-    return [];
-  }
-}
-
-function storeUsers(users) {
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-}
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000/api";
 
 function Auth({ mode = "login" }) {
   const isLogin = useMemo(() => mode === "login", [mode]);
@@ -27,13 +15,14 @@ function Auth({ mode = "login" }) {
     confirmPassword: "",
   });
   const [status, setStatus] = useState({ type: "", message: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     const fullName = formData.fullName.trim();
@@ -43,26 +32,6 @@ function Auth({ mode = "login" }) {
 
     if (!email || !password || (!isLogin && !fullName)) {
       setStatus({ type: "error", message: "Please fill all required fields." });
-      return;
-    }
-
-    const users = getStoredUsers();
-
-    if (isLogin) {
-      const existingUser = users.find(
-        (user) => user.email === email && user.password === password
-      );
-
-      if (!existingUser) {
-        setStatus({ type: "error", message: "Invalid email or password." });
-        return;
-      }
-
-      setStatus({
-        type: "success",
-        message: `Welcome back, ${existingUser.fullName}! Redirecting...`,
-      });
-      setTimeout(() => navigate("/"), 800);
       return;
     }
 
@@ -79,32 +48,60 @@ function Auth({ mode = "login" }) {
       return;
     }
 
-    if (users.some((user) => user.email === email)) {
+    try {
+      setIsSubmitting(true);
+      const endpoint = isLogin ? "auth/login" : "auth/signup";
+      const payload = isLogin
+        ? { email, password }
+        : { fullName, email, password };
+
+      const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setStatus({
+          type: "error",
+          message: result.message || "Unable to process your request.",
+        });
+        return;
+      }
+
+      if (isLogin) {
+        localStorage.setItem("otci-current-user", JSON.stringify(result.user));
+        setStatus({
+          type: "success",
+          message: `${result.message} Redirecting...`,
+        });
+        setTimeout(() => navigate("/"), 800);
+        return;
+      }
+
+      setStatus({
+        type: "success",
+        message: "Account created successfully. You can now log in.",
+      });
+      setFormData({
+        fullName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+      });
+    } catch {
       setStatus({
         type: "error",
-        message: "An account with this email already exists.",
+        message:
+          "Cannot reach backend server. Please start backend on port 5000.",
       });
-      return;
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const newUser = {
-      fullName,
-      email,
-      password,
-      createdAt: new Date().toISOString(),
-    };
-
-    storeUsers([...users, newUser]);
-    setStatus({
-      type: "success",
-      message: "Account created successfully. You can now log in.",
-    });
-    setFormData({
-      fullName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-    });
   };
 
   return (
@@ -175,6 +172,7 @@ function Auth({ mode = "login" }) {
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
+                required
                 className="rounded-md border border-white/35 bg-white/20 px-4 py-3 text-sm text-white placeholder:text-slate-200 outline-none transition focus:border-white"
               />
             ) : null}
@@ -184,6 +182,7 @@ function Auth({ mode = "login" }) {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              required
               className="rounded-md border border-white/35 bg-white/20 px-4 py-3 text-sm text-white placeholder:text-slate-200 outline-none transition focus:border-white"
             />
             <input
@@ -192,6 +191,8 @@ function Auth({ mode = "login" }) {
               name="password"
               value={formData.password}
               onChange={handleChange}
+              minLength={6}
+              required
               className="rounded-md border border-white/35 bg-white/20 px-4 py-3 text-sm text-white placeholder:text-slate-200 outline-none transition focus:border-white"
             />
             {!isLogin ? (
@@ -201,6 +202,8 @@ function Auth({ mode = "login" }) {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
+                minLength={6}
+                required
                 className="rounded-md border border-white/35 bg-white/20 px-4 py-3 text-sm text-white placeholder:text-slate-200 outline-none transition focus:border-white"
               />
             ) : null}
@@ -219,9 +222,14 @@ function Auth({ mode = "login" }) {
 
             <button
               type="submit"
+              disabled={isSubmitting}
               className="mt-2 rounded-md bg-gradient-to-r from-blue-600 to-purple-500 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
             >
-              {isLogin ? "Login Now →" : "Create Account →"}
+              {isSubmitting
+                ? "Please wait..."
+                : isLogin
+                ? "Login Now →"
+                : "Create Account →"}
             </button>
           </form>
         </div>
