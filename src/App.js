@@ -2,8 +2,9 @@ import { Route, Routes, useLocation } from "react-router-dom";
 import Navbar from "./Component/Navbar";
 import Home from "./Component/Home";
 import About from "./Component/About";
-import Services from "./Component/Services";
+import Courses from "./Component/Courses";
 import Contact from "./Component/Contact";
+import Services from "./Component/Services";
 import Auth from "./Component/Auth";
 import Footer from "./Component/Footer";
 
@@ -17,11 +18,13 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
-        <Route path="/services" element={<Services />} />
+        <Route path="/courses" element={<Courses />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/services" element={<Services />} />
         <Route path="/login" element={<Auth mode="login" />} />
         <Route path="/signup" element={<Auth mode="signup" />} />
       </Routes>
+
 
       {!hideLayout ? <Footer /> : null}
     </div>

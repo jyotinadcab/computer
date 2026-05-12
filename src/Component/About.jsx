@@ -6,9 +6,7 @@ const About = () => {
     <>
       <section className="bg-[#f7f7fc] py-20">
         <div className="mx-auto w-full max-w-5xl px-4 text-center sm:px-6 lg:px-8">
-          <p className="inline-flex items-center rounded-md bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm">
-            🏆 The Leader in Online Learning
-          </p>
+        
 
           <h1 className="mt-5 text-5xl font-extrabold tracking-tight text-slate-900 md:text-6xl">
             Build{" "}
